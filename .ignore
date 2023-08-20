@@ -1,0 +1,50 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Dependency directories (remove the comment below to include it)
+# /vendor/
+
+# IDEs and editors
+/.idea/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+
+# Go specific
+*.o
+*.a
+_cgo_defun.c
+_cgo_gotypes.go
+_cgo_export.*
+
+_testmain.go
+
+# Certificate files
+*.pem
+*.key
+
+# Log files
+*.log
+
+# Build artifacts
+# go.sum (uncomment if necessary)
+# go.mod (uncomment if necessary)
+
+# Other common files to ignore
+*.bak
+*.cache
+*.pid
+*.retry
