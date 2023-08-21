@@ -76,9 +76,11 @@ func main() {
 			continue
 		}
 
-		continueLoop := handleBaseCommand(args, rl)
+		continueLoop, err := handleBaseCommand(args, rl)
 		if continueLoop {
-			//TODO 可在这里打印异常
+			if err != nil {
+				fmt.Println(err)
+			}
 			continue
 		}
 
@@ -118,43 +120,35 @@ func getKubeConfigFile(inputContext string) error {
 	return nil
 }
 
-func handleBaseCommand(args []string, rl *readline.Instance) bool {
+func handleBaseCommand(args []string, rl *readline.Instance) (bool, error) {
 	switch args[0] {
 	case "help":
 		printHelp()
-		return true
+		return true, nil
 	case "sw":
 		if len(args) > 1 {
 			if err := switchContext(args[1]); err != nil {
-				fmt.Println(err)
-				return true
+				return true, err
 			}
 			rl.SetPrompt(getPrompt())
 			fmt.Printf("上下文已切换至 %s\n", args[1])
 		} else {
 			fmt.Println("请提供上下文名称")
 		}
-		return true
+		return true, nil
 	case "ls":
-		if err := printfFilesOnWorkingDir(); err != nil {
-			fmt.Println(err)
-		}
-		return true
+		return true, printfFilesOnWorkingDir()
 	case "cd":
 		isSafely := changeDirSafely(args[1], safelyDirectory)
 		if isSafely != nil {
-			fmt.Println(isSafely)
-		} else {
-			rl.SetPrompt(getPrompt())
+			return true, isSafely
 		}
-		return true
+		rl.SetPrompt(getPrompt())
+		return true, nil
 	case "pull":
-		if err := cloneOrPull(); err != nil {
-			fmt.Printf("拉取仓库失败：%s\n", err)
-		}
-		return true
+		return true, cloneOrPull()
 	default:
-		return false
+		return false, nil
 	}
 }
 
