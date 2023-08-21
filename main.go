@@ -89,6 +89,7 @@ func main() {
 			if i := index("-f", args); i > -1 && i < len(args) {
 				if err := validSafely(args[i+1], safelyDirectory); err != nil {
 					fmt.Println(err)
+					break
 				}
 			}
 			runCommand("kubectl", append(args[1:], []string{"--kubeconfig", filepath.Join(getKubeConfigDirectory(), kubeConfigFile)}...)...)
@@ -113,7 +114,7 @@ func runCommand(name string, arg ...string) {
 
 func getKubeConfigFile(inputContext string) error {
 	if v, ok := config.KubeConfigFileMap[inputContext]; !ok {
-		return fmt.Errorf("找不到对应 %s 配置.\n", inputContext)
+		return fmt.Errorf("找不到对应 %s 配置", inputContext)
 	} else {
 		kubeConfigFile = v + ".yaml"
 	}
