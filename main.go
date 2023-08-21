@@ -8,13 +8,15 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"time"
 )
 
 var config *Config
-var inputContext string
+var currentContext string
 var kubeConfigFile string
+var safelyDirectory string
 
 func main() {
 
@@ -40,19 +42,14 @@ func main() {
 		}
 	}
 
-	inputContext = os.Args[1]
-	if !getKubeConfigFile() {
-		return
-	}
-
 	if err := cloneOrPull(); err != nil {
 		fmt.Printf("无法克隆或拉取仓库: %s\n", err)
 		return
 	}
 
 	//TODO 换名字
-	if err := switchContext(inputContext); err != nil {
-		fmt.Printf("%s\n", err)
+	if err := switchContext(os.Args[1]); err != nil {
+		fmt.Println(err)
 		return
 	}
 
@@ -81,11 +78,17 @@ func main() {
 
 		continueLoop := handleBaseCommand(args, rl)
 		if continueLoop {
+			//TODO 可在这里打印异常
 			continue
 		}
 
 		switch args[0] {
 		case "k":
+			if i := index("-f", args); i > -1 && i < len(args) {
+				if err := validSafely(args[i+1], safelyDirectory); err != nil {
+					fmt.Println(err)
+				}
+			}
 			runCommand("kubectl", append(args[1:], []string{"--kubeconfig", filepath.Join(getKubeConfigDirectory(), kubeConfigFile)}...)...)
 			break
 		case "helm":
@@ -106,14 +109,13 @@ func runCommand(name string, arg ...string) {
 	}
 }
 
-func getKubeConfigFile() bool {
+func getKubeConfigFile(inputContext string) error {
 	if v, ok := config.KubeConfigFileMap[inputContext]; !ok {
-		fmt.Printf("找不到对应 %s 配置.\n", inputContext)
-		return false
+		return fmt.Errorf("找不到对应 %s 配置.\n", inputContext)
 	} else {
 		kubeConfigFile = v + ".yaml"
 	}
-	return true
+	return nil
 }
 
 func handleBaseCommand(args []string, rl *readline.Instance) bool {
@@ -123,39 +125,32 @@ func handleBaseCommand(args []string, rl *readline.Instance) bool {
 		return true
 	case "sw":
 		if len(args) > 1 {
-			inputContext = args[1]
-			if !getKubeConfigFile() {
-				return true
-			}
-			//if err := cloneOrPull(); err != nil {
-			//	fmt.Printf("无法克隆或拉取仓库 (repository): %s\n", err)
-			//	return true
-			//}
-			if err := switchContext(inputContext); err != nil {
-				fmt.Printf("%s\n", err)
+			if err := switchContext(args[1]); err != nil {
+				fmt.Println(err)
 				return true
 			}
 			rl.SetPrompt(getPrompt())
-			fmt.Printf("上下文已切换至 %s\n", inputContext)
+			fmt.Printf("上下文已切换至 %s\n", args[1])
 		} else {
 			fmt.Println("请提供上下文名称")
 		}
 		return true
 	case "ls":
-		printfFilesOnWorkingDir()
+		if err := printfFilesOnWorkingDir(); err != nil {
+			fmt.Println(err)
+		}
 		return true
 	case "cd":
-		safelyDir := filepath.Join(config.LocalRepository, config.KubeConfigFileMap[inputContext])
-		isSafely, _ := changeDirSafely(args[1], safelyDir)
-		if !isSafely {
-			fmt.Printf("无法切换至 %s\n", args[1])
+		isSafely := changeDirSafely(args[1], safelyDirectory)
+		if isSafely != nil {
+			fmt.Println(isSafely)
 		} else {
 			rl.SetPrompt(getPrompt())
 		}
 		return true
 	case "pull":
 		if err := cloneOrPull(); err != nil {
-			fmt.Println("拉取仓库失败。")
+			fmt.Printf("拉取仓库失败：%s\n", err)
 		}
 		return true
 	default:
@@ -178,15 +173,21 @@ func cloneOrPull() error {
 }
 
 func switchContext(inputContext string) error {
-	contextDir := filepath.Join(config.LocalRepository, config.KubeConfigFileMap[inputContext])
-	tgDir := filepath.Join(contextDir, baseDirName())
 
+	to := filepath.Join(config.LocalRepository, config.KubeConfigFileMap[inputContext])
+
+	if err := getKubeConfigFile(inputContext); err != nil {
+		return err
+	}
+	tgDir := filepath.Join(to, baseDirName())
 	if _, err := os.Stat(tgDir); os.IsNotExist(err) {
-		tgDir = contextDir
+		tgDir = to
 	}
 	if err := os.Chdir(tgDir); err != nil {
 		return fmt.Errorf("无法切换到目录 %s: %w", tgDir, err)
 	}
+	currentContext = inputContext
+	safelyDirectory = to
 	return printFiles(tgDir)
 }
 
@@ -255,7 +256,7 @@ func listYamlFiles() func(string) []string {
 func getPrompt() string {
 	hiRed := color.New(color.FgRed).SprintFunc()
 
-	return fmt.Sprintf("%s %s > ", hiRed(config.KubeConfigFileMap[inputContext]), hiRed("("+filepath.Base(workingDir())+")"))
+	return fmt.Sprintf("%s %s > ", hiRed(config.KubeConfigFileMap[currentContext]), hiRed("("+filepath.Base(workingDir())+")"))
 }
 
 type Config struct {
@@ -278,6 +279,19 @@ func loadConfig(filename string) (*Config, error) {
 	}
 
 	return &config, nil
+}
+
+func index[T any](v T, array []T) int {
+	if n := len(array); array != nil && n != 0 {
+		i := 0
+		for !reflect.DeepEqual(v, array[i]) {
+			i++
+		}
+		if i != n {
+			return i
+		}
+	}
+	return -1
 }
 
 func printHelp() {

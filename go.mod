@@ -4,6 +4,7 @@ go 1.21
 
 require (
 	github.com/chzyer/readline v1.5.1
+	github.com/fatih/color v1.15.0
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/apimachinery v0.28.0
 	k8s.io/client-go v0.0.0-20230815201700-9081272f7fb2
@@ -12,7 +13,6 @@ require (
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/emicklei/go-restful/v3 v3.9.0 // indirect
-	github.com/fatih/color v1.15.0 // indirect
 	github.com/go-logr/logr v1.2.4 // indirect
 	github.com/go-openapi/jsonpointer v0.19.6 // indirect
 	github.com/go-openapi/jsonreference v0.20.2 // indirect
