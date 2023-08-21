@@ -17,8 +17,10 @@
 项目依赖 `github.com/chzyer/readline` 和 `github.com/fatih/color`，可以使用以下命令安装：
 
 ```shell
-go get github.com/chzyer/readline
-go get github.com/fatih/color
+go build -o kubectl-icl
+sudo mv kubectl-icl /usr/local/bin
+kubectl icl <context>
+```
 
 ### 配置文件示例
 
