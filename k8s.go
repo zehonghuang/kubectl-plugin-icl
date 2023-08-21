@@ -8,13 +8,11 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"path/filepath"
 	"runtime"
-	"strings"
 )
 
 func getNames(s, resource string) ([]string, error) {
 
 	var namespace = ""
-	arr := strings.Fields(s)
 
 	config, err := clientcmd.BuildConfigFromFlags("", filepath.Join(getKubeConfigDirectory(), kubeConfigFile))
 	if err != nil {
@@ -49,9 +47,6 @@ func getNames(s, resource string) ([]string, error) {
 			names = append(names, pod.Name)
 		}
 	case "namespaces":
-		if arr[len(arr)-1] != "-n" {
-			return names, nil
-		}
 		namespaces, err := clientset.CoreV1().Namespaces().List(context.TODO(), metav1.ListOptions{})
 		if err != nil {
 			return nil, err

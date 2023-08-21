@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"github.com/chzyer/readline"
 )
 
@@ -10,23 +9,18 @@ func GetCompleter() *readline.PrefixCompleter {
 		readline.PcItem("k",
 			readline.PcItem("get",
 				readline.PcItemDynamic(func(s string) []string {
-					names, _ := getNames(s, "resources")
-					return names
+					return []string{"pods", "ingresses", "deployments", "services"}
 				},
 					readline.PcItem("-n",
 						readline.PcItemDynamic(func(s string) []string {
 							names, _ := getNames(s, "namespaces")
 							return names
-						},
-							readline.PcItemDynamic(func(s string) []string {
-								names, err := getNames(s, "pods")
-								if err != nil {
-									fmt.Printf("无法获取 namespace: %s\n", err)
-								}
-								return names
-							}))), // 指定命名空间
+						})), // 指定命名空间
 					readline.PcItem("--namespace",
-						readline.PcItem("default")), // 指定命名空间
+						readline.PcItemDynamic(func(s string) []string {
+							names, _ := getNames(s, "namespaces")
+							return names
+						})), // 指定命名空间
 					readline.PcItem("-o", // 输出格式
 						readline.PcItem("json"),
 						readline.PcItem("yaml"),
@@ -43,25 +37,46 @@ func GetCompleter() *readline.PrefixCompleter {
 				),
 				readline.PcItem("nodes"),
 				readline.PcItem("services",
-					readline.PcItem("-n"),
-				),
+					readline.PcItem("-n",
+						readline.PcItemDynamic(func(s string) []string {
+							names, _ := getNames(s, "namespaces")
+							return names
+						}))),
 			),
 			readline.PcItem("create",
-				readline.PcItem("-f"),
-				readline.PcItem("-n"),
+				readline.PcItem("-f",
+					readline.PcItemDynamic(listYamlFiles())),
+				readline.PcItem("-n",
+					readline.PcItemDynamic(func(s string) []string {
+						names, _ := getNames(s, "namespaces")
+						return names
+					})),
 			),
 			readline.PcItem("delete",
 				readline.PcItem("pods",
-					readline.PcItem("-n"),
+					readline.PcItem("-n",
+						readline.PcItemDynamic(func(s string) []string {
+							names, _ := getNames(s, "namespaces")
+							return names
+						})),
 				),
 				readline.PcItem("nodes"),
 				readline.PcItem("services",
-					readline.PcItem("-n"),
+					readline.PcItem("-n",
+						readline.PcItemDynamic(func(s string) []string {
+							names, _ := getNames(s, "namespaces")
+							return names
+						})),
 				),
 			),
 			readline.PcItem("apply",
-				readline.PcItem("-f"),
-				readline.PcItem("-n"),
+				readline.PcItem("-f",
+					readline.PcItemDynamic(listYamlFiles())),
+				readline.PcItem("-n",
+					readline.PcItemDynamic(func(s string) []string {
+						names, _ := getNames(s, "namespaces")
+						return names
+					})),
 			),
 			readline.PcItem("logs",
 				readline.PcItem("-n"),

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/chzyer/readline"
+	"github.com/fatih/color"
 	"gopkg.in/yaml.v3"
 	"os"
 	"os/exec"
@@ -201,7 +202,13 @@ func printFiles(dir string) error {
 	fmt.Printf("项目 in %s:\n", dir)
 	for _, file := range files {
 		info, _ := file.Info()
-		fmt.Printf(" - %s\t\t%s\n", file.Name(), info.ModTime().Format(time.RFC822))
+		green := color.New(color.FgGreen).SprintFunc()
+		if file.IsDir() {
+			fmt.Printf("  %s \t\t%s\n", green(file.Name()), info.ModTime().Format(time.RFC822))
+		} else {
+			fmt.Printf("  %s\t\t%s\n", file.Name(), info.ModTime().Format(time.RFC822))
+		}
+
 	}
 	return nil
 }
@@ -216,7 +223,7 @@ func listFiles() func(string) []string {
 		var names []string
 		for _, file := range files {
 			if file.IsDir() {
-				names = append(names, "./"+file.Name()) // 为目录添加 "./" 前缀
+				names = append(names, file.Name()) // 为目录添加 "./" 前缀
 			} else {
 				names = append(names, file.Name())
 			}
@@ -225,8 +232,30 @@ func listFiles() func(string) []string {
 	}
 }
 
+func listYamlFiles() func(string) []string {
+	return func(line string) []string {
+		files, err := os.ReadDir(workingDir())
+		if err != nil {
+			return nil
+		}
+		var names []string
+		for _, file := range files {
+			if file.IsDir() {
+				continue
+			}
+
+			if strings.HasSuffix(file.Name(), ".yaml") || strings.HasSuffix(file.Name(), ".yml") {
+				names = append(names, file.Name())
+			}
+		}
+		return names
+	}
+}
+
 func getPrompt() string {
-	return fmt.Sprintf("\033[31m%s (%s)\033[0m > ", config.KubeConfigFileMap[inputContext], filepath.Base(workingDir()))
+	hiRed := color.New(color.FgRed).SprintFunc()
+
+	return fmt.Sprintf("%s %s > ", hiRed(config.KubeConfigFileMap[inputContext]), hiRed("("+filepath.Base(workingDir())+")"))
 }
 
 type Config struct {
