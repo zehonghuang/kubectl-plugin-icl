@@ -58,3 +58,11 @@ func workingDir() string {
 func baseDirName() string {
 	return filepath.Base(workingDir())
 }
+
+func dirEntryList(path string) []os.DirEntry {
+	files, err := os.ReadDir(path)
+	if err != nil {
+		return nil
+	}
+	return files
+}

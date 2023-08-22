@@ -2,6 +2,8 @@ package main
 
 import (
 	"github.com/chzyer/readline"
+	"path/filepath"
+	"strings"
 )
 
 func GetCompleter() *readline.PrefixCompleter {
@@ -88,6 +90,17 @@ func GetCompleter() *readline.PrefixCompleter {
 		readline.PcItem("cd",
 			readline.PcItemDynamic(listFiles())),
 		readline.PcItem("sw",
-			readline.PcItemDynamic(getKubeContextList())),
+			readline.PcItemDynamic(getKubeContextList(),
+				readline.PcItemDynamic(func(line string) []string {
+					var names []string
+					args := strings.Fields(line)
+					files := dirEntryList(filepath.Join(config.LocalRepository, config.KubeConfigFileMap[args[1]]))
+					for _, file := range files {
+						if file.IsDir() {
+							names = append(names, file.Name())
+						}
+					}
+					return names
+				}))),
 	)
 }
