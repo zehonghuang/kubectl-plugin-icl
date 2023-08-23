@@ -1,8 +1,13 @@
-remote_repository: https://github.com/zehonghuang/dev-repository.git
-local_repository: "/Users/huangzehong/Documents/GitHub/dev-repository"
+remote_repository: https://gitlab.chilly.room/chillyroom/deployment.git
+local_repository: "C:\\Users\\zehon\\RiderProjects\\deployment"
 kube_config_map:
   context1: "context1"
   context2: "context2"
 kube_config_file_map:
-  context1: "context1"
-  context2: "context2"
+  on-p: "on-premise"
+  cn-hz: "cn-hangzhou"
+  us-sv: "us-siliconvalley"
+completer:
+  -n:
+    - "efk"
+    - "monitoring"

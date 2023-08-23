@@ -47,11 +47,14 @@ func getNames(s, resource string) ([]string, error) {
 			names = append(names, pod.Name)
 		}
 	case "namespaces":
-		namespaces, err := clientset.CoreV1().Namespaces().List(context.TODO(), metav1.ListOptions{})
-		if err != nil {
-			return nil, err
+		if v, find := ICLConfig.Completer["-n"]; find {
+			names = append(names, v...)
 		}
+		namespaces, _ := clientset.CoreV1().Namespaces().List(context.TODO(), metav1.ListOptions{})
 		for _, ns := range namespaces.Items {
+			if Contains(names, ns.Name) {
+				continue
+			}
 			names = append(names, ns.Name)
 		}
 	case "services":
@@ -71,7 +74,7 @@ func getNames(s, resource string) ([]string, error) {
 func getKubeContextList() func(string) []string {
 	return func(s string) []string {
 		var contexts []string
-		for k, _ := range config.KubeConfigFileMap {
+		for k, _ := range ICLConfig.KubeConfigFileMap {
 			contexts = append(contexts, k)
 		}
 		return contexts

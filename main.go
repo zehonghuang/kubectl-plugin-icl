@@ -8,12 +8,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"reflect"
+	"runtime"
 	"strings"
 	"time"
 )
 
-var config *Config
+var ICLConfig *Config
 var currentContext string
 var kubeConfigFile string
 var safelyDirectory string
@@ -35,7 +35,7 @@ func main() {
 		fmt.Printf("配置文件 %s 不存在，请确保它位于正确的位置。\n", configFile)
 		return
 	} else {
-		config, err = loadConfig(configFile)
+		ICLConfig, err = loadConfig(configFile)
 		if err != nil {
 			fmt.Println("加载文件异常。")
 			return
@@ -48,14 +48,25 @@ func main() {
 	}
 
 	//TODO 换名字
-	if err := switchContext(os.Args[1]); err != nil {
+	if err := switchContext(os.Args[1], ""); err != nil {
 		fmt.Println(err)
 		return
 	}
 
 	rl, err := readline.NewEx(&readline.Config{
-		Prompt:          getPrompt(),
-		HistoryFile:     "/tmp/readline.tmp",
+		Prompt: getPrompt(),
+		HistoryFile: func() string {
+			switch os := runtime.GOOS; os {
+			case "windows":
+				return "D:\\readline.tmp"
+			case "linux":
+				return "/tmp/readline.tmp"
+			case "darwin":
+				return "/tmp/readline.tmp"
+			default:
+				return "D:\\readline.tmp"
+			}
+		}(),
 		AutoComplete:    GetCompleter(),
 		InterruptPrompt: "^C",
 		EOFPrompt:       "exit",
@@ -86,7 +97,7 @@ func main() {
 
 		switch args[0] {
 		case "k":
-			if i := index("-f", args); i > -1 && i < len(args) {
+			if i := indexOf("-f", args); i > -1 && i < len(args) {
 				if err := validSafely(args[i+1], safelyDirectory); err != nil {
 					fmt.Println(err)
 					break
@@ -113,7 +124,7 @@ func runCommand(name string, arg ...string) {
 }
 
 func getKubeConfigFile(inputContext string) error {
-	if v, ok := config.KubeConfigFileMap[inputContext]; !ok {
+	if v, ok := ICLConfig.KubeConfigFileMap[inputContext]; !ok {
 		return fmt.Errorf("找不到对应 %s 配置", inputContext)
 	} else {
 		kubeConfigFile = v + ".yaml"
@@ -128,7 +139,11 @@ func handleBaseCommand(args []string, rl *readline.Instance) (bool, error) {
 		return true, nil
 	case "sw":
 		if len(args) > 1 {
-			if err := switchContext(args[1]); err != nil {
+			tgDir := ""
+			if len(args) == 3 {
+				tgDir = args[2]
+			}
+			if err := switchContext(args[1], tgDir); err != nil {
 				return true, err
 			}
 			rl.SetPrompt(getPrompt())
@@ -154,10 +169,10 @@ func handleBaseCommand(args []string, rl *readline.Instance) (bool, error) {
 }
 
 func cloneOrPull() error {
-	repoPath := config.LocalRepository
+	repoPath := ICLConfig.LocalRepository
 	cmdArgs := []string{"git"}
 	if _, err := os.Stat(repoPath); os.IsNotExist(err) {
-		cmdArgs = append(cmdArgs, "clone", config.RemoteRepository, repoPath)
+		cmdArgs = append(cmdArgs, "clone", ICLConfig.RemoteRepository, repoPath)
 	} else {
 		cmdArgs = append(cmdArgs, "-C", repoPath, "pull")
 	}
@@ -167,14 +182,17 @@ func cloneOrPull() error {
 	return cmd.Run()
 }
 
-func switchContext(inputContext string) error {
+func switchContext(inputContext, dir string) error {
 
-	to := filepath.Join(config.LocalRepository, config.KubeConfigFileMap[inputContext])
+	to := filepath.Join(ICLConfig.LocalRepository, ICLConfig.KubeConfigFileMap[inputContext])
 
 	if err := getKubeConfigFile(inputContext); err != nil {
 		return err
 	}
 	tgDir := filepath.Join(to, baseDirName())
+	if len(dir) > 0 {
+		tgDir = filepath.Join(to, dir)
+	}
 	if _, err := os.Stat(tgDir); os.IsNotExist(err) {
 		tgDir = to
 	}
@@ -211,6 +229,10 @@ func printFiles(dir string) error {
 
 func listFiles() func(string) []string {
 	return func(line string) []string {
+		s := ""
+		if strings.HasSuffix(line, ".") || strings.HasSuffix(line, "./") {
+			s = "./"
+		}
 		files, err := os.ReadDir(workingDir())
 		if err != nil {
 			return nil
@@ -219,9 +241,11 @@ func listFiles() func(string) []string {
 		var names []string
 		for _, file := range files {
 			if file.IsDir() {
-				names = append(names, file.Name()) // 为目录添加 "./" 前缀
+				names = append(names, s+file.Name()) // 为目录添加 "./" 前缀
 			} else {
-				names = append(names, file.Name())
+				if len(s) == 0 {
+					names = append(names, file.Name())
+				}
 			}
 		}
 		return names
@@ -251,14 +275,15 @@ func listYamlFiles() func(string) []string {
 func getPrompt() string {
 	hiRed := color.New(color.FgRed).SprintFunc()
 
-	return fmt.Sprintf("%s %s > ", hiRed(config.KubeConfigFileMap[currentContext]), hiRed("("+filepath.Base(workingDir())+")"))
+	return fmt.Sprintf("%s %s > ", hiRed(ICLConfig.KubeConfigFileMap[currentContext]), hiRed("("+filepath.Base(workingDir())+")"))
 }
 
 type Config struct {
-	RemoteRepository  string            `yaml:"remote_repository"`
-	LocalRepository   string            `yaml:"local_repository"`
-	KubeConfigMap     map[string]string `yaml:"kube_config_map"`
-	KubeConfigFileMap map[string]string `yaml:"kube_config_file_map"`
+	RemoteRepository  string              `yaml:"remote_repository"`
+	LocalRepository   string              `yaml:"local_repository"`
+	KubeConfigMap     map[string]string   `yaml:"kube_config_map"`
+	KubeConfigFileMap map[string]string   `yaml:"kube_config_file_map"`
+	Completer         map[string][]string `yaml:"completer"`
 }
 
 func loadConfig(filename string) (*Config, error) {
@@ -276,29 +301,16 @@ func loadConfig(filename string) (*Config, error) {
 	return &config, nil
 }
 
-func index[T any](v T, array []T) int {
-	if n := len(array); array != nil && n != 0 {
-		i := 0
-		for !reflect.DeepEqual(v, array[i]) {
-			i++
-		}
-		if i != n {
-			return i
-		}
-	}
-	return -1
-}
-
 func printHelp() {
 	fmt.Println("kubectl icl - 交互式 Kubernetes 上下文管理工具")
 	fmt.Println("\n可用命令:")
-	fmt.Println("  help                   打印帮助信息")
-	fmt.Println("  sw <context>           切换 Kubernetes 上下文")
-	fmt.Println("  ls                     列出当前目录下的项目")
-	fmt.Println("  cd <directory>         更改目录，无法越过当前上下文的根目录")
-	fmt.Println("  pull                   从远程仓库拉取最新版本")
-	fmt.Println("  k <kubectl commands>   执行 kubectl 命令")
-	fmt.Println("  helm <helm commands>   执行 helm 命令")
+	fmt.Println("  help                          打印帮助信息")
+	fmt.Println("  sw <context> <directory>      切换 Kubernetes 上下文")
+	fmt.Println("  ls                            列出当前目录下的项目")
+	fmt.Println("  cd <directory>                更改目录，无法越过当前上下文的根目录")
+	fmt.Println("  pull                          从远程仓库拉取最新版本")
+	fmt.Println("  k <kubectl commands>          执行 kubectl 命令")
+	fmt.Println("  helm <helm commands>          执行 helm 命令")
 	fmt.Println("\n配置文件:")
 	fmt.Printf("  配置文件名为 'config.yaml'，应位于目录: %s\n", getKubeConfigDirectory())
 	fmt.Println("  配置文件结构:")

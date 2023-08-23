@@ -94,7 +94,7 @@ func GetCompleter() *readline.PrefixCompleter {
 				readline.PcItemDynamic(func(line string) []string {
 					var names []string
 					args := strings.Fields(line)
-					files := dirEntryList(filepath.Join(config.LocalRepository, config.KubeConfigFileMap[args[1]]))
+					files := dirEntryList(filepath.Join(ICLConfig.LocalRepository, ICLConfig.KubeConfigFileMap[args[1]]))
 					for _, file := range files {
 						if file.IsDir() {
 							names = append(names, file.Name())
