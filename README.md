@@ -37,8 +37,8 @@ kube_config_map:
   context1: <上下文1>
   context2: <上下文2>
 kube_config_file_map:
-  context1: context1.yaml
-  context2: context2.yaml
+  context1: context1
+  context2: context2
 ```
 
 ### 使用说明
