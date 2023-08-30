@@ -89,6 +89,31 @@ func main() {
 		//	}
 		//}
 
+		//swCommand := ""
+		//kCommand := ""
+		//
+		//andIndex := strings.Index(line, "&&")
+		//if andIndex > 0 && andIndex <  {
+		//
+		//}
+		//commands := strings.Split(line, "&&")
+		//if len(commands) > 2 || true {
+		//	fmt.Println("'&&'指令仅且支持'k'和'sw'同时用.")
+		//	continue
+		//}
+		//
+		//for _, command := range commands {
+		//	command = strings.TrimSpace(command)
+		//	if strings.HasPrefix(command, "sw ") {
+		//		swCommand = command
+		//	} else if strings.HasPrefix(command, "k ") {
+		//		kCommand = command
+		//	} else {
+		//		fmt.Println("'&&'指令仅且支持'k'和'sw'同时用.")
+		//		continue
+		//	}
+		//}
+
 		args := strings.Fields(line)
 		if len(args) == 0 {
 			continue
@@ -237,14 +262,16 @@ func printFiles(dir string) error {
 func listFiles() func(string) []string {
 	return func(line string) []string {
 		s := ""
-		if strings.HasSuffix(line, ".") || strings.HasSuffix(line, "./") {
+		line = strings.TrimPrefix(line, "cd ")
+		if strings.HasPrefix(line, "..") || strings.HasPrefix(line, "../") {
+			s = "../"
+		} else if strings.HasPrefix(line, ".") || strings.HasPrefix(line, "./") {
 			s = "./"
 		}
 		var files []os.DirEntry
 
-		if strings.HasSuffix(line, "../") {
-			files, _ = os.ReadDir("../")
-			s = "../"
+		if len(s) > 0 {
+			files, _ = os.ReadDir(s)
 		} else {
 			files, _ = os.ReadDir(workingDir())
 		}
