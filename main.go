@@ -17,6 +17,7 @@ var ICLConfig *Config
 var currentContext string
 var kubeConfigFile string
 var safelyDirectory string
+var allowCommand = []string{"pwd", "clear", "ps", "ls"}
 
 func main() {
 
@@ -147,11 +148,17 @@ func main() {
 }
 
 func runCommand(name string, arg ...string) {
-	cmd := exec.Command(name, arg...)
+
+	var cmd *exec.Cmd
+	if runtime.GOOS == "windows" {
+		cmd = exec.Command("powershell", append([]string{"-Command"}, append([]string{name}, arg...)...)...)
+	} else {
+		cmd = exec.Command(name, arg...)
+	}
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
-		//fmt.Println("命令执行出错:", err)
+		fmt.Println("命令执行出错:", err)
 	}
 }
 
@@ -184,8 +191,8 @@ func handleBaseCommand(args []string, rl *readline.Instance) (bool, error) {
 			fmt.Println("请提供上下文名称")
 		}
 		return true, nil
-	case "ls":
-		return true, printfFilesOnWorkingDir()
+	//case "ls":
+	//	return true, printfFilesOnWorkingDir()
 	case "cd":
 		isSafely := changeDirSafely(args[1], safelyDirectory)
 		if isSafely != nil {
@@ -196,6 +203,10 @@ func handleBaseCommand(args []string, rl *readline.Instance) (bool, error) {
 	case "pull":
 		return true, cloneOrPull()
 	default:
+		if Contains(allowCommand, args[0]) {
+			runCommand(args[0])
+			return true, nil
+		}
 		return false, nil
 	}
 }
