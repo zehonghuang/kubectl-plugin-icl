@@ -9,6 +9,16 @@ import (
 func GetCompleter() *readline.PrefixCompleter {
 	return readline.NewPrefixCompleter(
 		readline.PcItem("k",
+			readline.PcItem("it",
+				readline.PcItem("-n",
+					readline.PcItemDynamic(func(s string) []string {
+						names, _ := getNames(s, "namespaces")
+						return names
+					},
+						readline.PcItemDynamic(func(s string) []string {
+							names, _ := getNames(s, "pods")
+							return names
+						})))),
 			readline.PcItem("get",
 				readline.PcItemDynamic(func(s string) []string {
 					return []string{"pods", "ingresses", "deployments", "services"}

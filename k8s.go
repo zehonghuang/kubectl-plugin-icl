@@ -2,12 +2,14 @@ package main
 
 import (
 	"context"
+	"fmt"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	"path/filepath"
 	"runtime"
+	"strings"
 )
 
 func getNames(s, resource string) ([]string, error) {
@@ -39,8 +41,13 @@ func getNames(s, resource string) ([]string, error) {
 			}
 		}
 	case "pods":
+		f := strings.Fields(s)
+		if len(f) > 0 {
+			namespace = f[len(f)-1]
+		}
 		pods, err := clientset.CoreV1().Pods(namespace).List(context.TODO(), metav1.ListOptions{})
 		if err != nil {
+			fmt.Println(err)
 			return nil, err
 		}
 		for _, pod := range pods.Items {
@@ -50,12 +57,14 @@ func getNames(s, resource string) ([]string, error) {
 		if v, find := ICLConfig.Completer["-n"]; find {
 			names = append(names, v...)
 		}
-		namespaces, _ := clientset.CoreV1().Namespaces().List(context.TODO(), metav1.ListOptions{})
-		for _, ns := range namespaces.Items {
-			if Contains(names, ns.Name) {
-				continue
+		namespaces, err := clientset.CoreV1().Namespaces().List(context.TODO(), metav1.ListOptions{})
+		if err == nil {
+			for _, ns := range namespaces.Items {
+				if Contains(names, ns.Name) {
+					continue
+				}
+				names = append(names, ns.Name)
 			}
-			names = append(names, ns.Name)
 		}
 	case "services":
 		services, err := clientset.CoreV1().Services(namespace).List(context.TODO(), metav1.ListOptions{})

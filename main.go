@@ -135,7 +135,11 @@ func main() {
 					break
 				}
 			}
-			runCommand("kubectl", append(args[1:], []string{"--kubeconfig", filepath.Join(getKubeConfigDirectory(), kubeConfigFile)}...)...)
+			subCmd := args[1:]
+			if args[1] == "it" && len(args) == 5 {
+				subCmd = strings.Fields(fmt.Sprintf("exec -it -n %s %s -- /bin/bash", args[3], args[4]))
+			}
+			runCommand("kubectl", append([]string{"--kubeconfig", filepath.Join(getKubeConfigDirectory(), kubeConfigFile)}, subCmd...)...)
 			break
 		case "helm":
 			runCommand("helm", append(args[1:], []string{"--kubeconfig", filepath.Join(getKubeConfigDirectory(), kubeConfigFile)}...)...)
@@ -311,9 +315,9 @@ func listYamlFiles() func(string) []string {
 }
 
 func getPrompt() string {
-	hiRed := color.New(color.FgRed).SprintFunc()
+	hiRed := color.New(color.FgBlue).SprintFunc()
 
-	return fmt.Sprintf("%s %s > ", hiRed(ICLConfig.KubeConfigFileMap[currentContext]), hiRed("("+filepath.Base(workingDir())+")"))
+	return fmt.Sprintf("%s%s📌 ", hiRed(ICLConfig.KubeConfigFileMap[currentContext]), hiRed("("+filepath.Base(workingDir())+")"))
 }
 
 type Config struct {
